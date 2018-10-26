@@ -1,6 +1,8 @@
 # rname
 
-rename utility
+command line rename utility
+
+よく使うリネームパターンを集約してコマンドラインで使えるようにする。
 
 
 ## status
