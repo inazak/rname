@@ -38,9 +38,9 @@ func TestPrependZeros(t *testing.T) {
       Expected:"abcxyz",
     },
     {
-      Sample:  "abc1234xyz",
+      Sample:  "12abc45xyz",
       Width:   3,
-      Expected:"abc1234xyz",
+      Expected:"12abc045xyz",
     },
   }
 

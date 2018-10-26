@@ -10,26 +10,49 @@ import (
 var usage =`
 Usage:
 
-  rname [test] prepend [-w=4] [PATTERN]
+  rname [test] prepend [-width=4] [FILE_PATTERN]
     prepend zeros for number
     ex) abc-1.jpg  =>  abc-0001.jpg
 
-  rname [test] serial  [-w=4] [PATTERN]
+  rname [test] serial  [-width=4] [FILE_PATTERN]
     replace filename to serial number
     ex) abc.jpg  =>  0001.jpg
 
-  PATTERN is shell file name syntax like '*.jpg'.
-  when PATTERN is omitted, '*' is used.
+  rname [test] fillin [-padding='_'] [FILE_PATTERN]
+    fill padding in place of space
+    ex) abc def.jpg => abc_def.jpg
+
+  rname [test] erase -target='?' [FILE_PATTERN]
+    erase string matched target
+    ex) erase -t='-' : a-b-c.jpg => abc.jpg
+
+  rname [test] substitute -pattern='?' -replace='?' [FILE_PATTERN]
+    substitute regexp-pattern to replacement text    
+    ex) substitute -p='^(.)(.)' -r='$2$1' : abc.jpg => bac.jpg
+
+  FILE_PATTERN is shell file name syntax like '*.jpg'.
+  when FILE_PATTERN is omitted, '*' is used.
 `
 
 func main() {
 
   // subcommand flagset
-  prepend      := flag.NewFlagSet("prepend", flag.ExitOnError)
-  prependWidth := prepend.Int("width", 4, "width of prepending zeros")
+  prepend       := flag.NewFlagSet("prepend", flag.ExitOnError)
+  prependWidth  := prepend.Int("width", 4, "width of prepending zeros")
+  prependW      := prepend.Int("w",     0, "width of prepending zeros")
 
-  serial       := flag.NewFlagSet("serial", flag.ExitOnError)
-  serialWidth  := serial.Int("width", 4, "width of prepending zeros")
+  serial        := flag.NewFlagSet("serial", flag.ExitOnError)
+  serialWidth   := serial.Int("width", 4, "width of prepending zeros")
+  serialW       := serial.Int("w",     0, "width of prepending zeros")
+
+  fillin        := flag.NewFlagSet("fillin", flag.ExitOnError)
+  fillinPadding := fillin.String("padding", "_", "padding in place of space")
+  fillinP       := fillin.String("p",       "",  "padding in place of space")
+
+  erase         := flag.NewFlagSet("erase", flag.ExitOnError)
+  eraseTarget   := erase.String("target", "", "string to erase")
+  eraseT        := erase.String("t",      "", "string to erase")
+
 
   // exit when arguments not found
   if len(os.Args) == 1 {
@@ -63,27 +86,56 @@ func main() {
   case "serial":
     serial.Parse(args[1:])
 
+  case "fillin":
+    fillin.Parse(args[1:])
+
+  case "erase":
+    erase.Parse(args[1:])
+
   default:
     fmt.Printf("%q is not valid subcommand.\n%s", args[0], usage)
     os.Exit(1)
   }
 
 
-  var com rname.Command //replace function interface
+  var comm rname.Command //function interface
   filter := "*"
 
   // subcommand PREPEND
   if prepend.Parsed() {
-    com = &rname.PrependCommand{ Width: *prependWidth }
+    if *prependW != 0 { *prependWidth = *prependW }
+    comm = &rname.PrependCommand{ Width: *prependWidth }
     if len(prepend.Args()) == 1 {
       filter = prepend.Args()[0]
     }
   }
   // subcommand SERIAL
   if serial.Parsed() {
-    com = &rname.SerialCommand{ Width: *serialWidth, Current: 1 }
+    if *serialW != 0 { *serialWidth = *serialW }
+    comm = &rname.SerialCommand{ Width: *serialWidth, Current: 1 }
     if len(serial.Args()) == 1 {
       filter = serial.Args()[0]
+    }
+  }
+  // subcommand FILLIN
+  if fillin.Parsed() {
+    if *fillinP != "" { *fillinPadding = *fillinP }
+    comm = &rname.FillinCommand{ Padding: *fillinPadding }
+    if len(fillin.Args()) == 1 {
+      filter = fillin.Args()[0]
+    }
+  }
+  // subcommand ERASE
+  if erase.Parsed() {
+    if *eraseT != "" { *eraseTarget = *eraseT }
+    // exit when erase target not found
+    if *eraseTarget == "" {
+      fmt.Printf("%s", usage)
+      os.Exit(1)
+    }
+    comm = &rname.EraseCommand{ Target: *eraseTarget }
+    if len(erase.Args()) == 1 {
+      filter = erase.Args()[0]
     }
   }
 
@@ -97,7 +149,7 @@ func main() {
   // do action for each filepath
   for _, fpath := range list {
     // use command interface function
-    newfpath := com.Replace(fpath)
+    newfpath := comm.Rewrite(fpath)
 
     // only print in test mode
     if isTest {
@@ -115,26 +167,5 @@ func main() {
     }
   }
 }
-
-
-/*
---- goal ---
-
-rname serial [-w 4]
-  rename all file to serial number
-
-rname prepend [-w 4]
-  prepend zeros for number
-
-rname fillin [-d '_']
-  fill '_' in place of space
-
-rname erase REGEXP
-  erace match char
-
-rname rename REGEXP STRING
-  rename
-*/
-
 
 

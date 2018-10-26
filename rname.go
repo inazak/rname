@@ -66,7 +66,7 @@ func splitFilepath(fpath string) (dir, name, ext string) {
 //// subcommand interface
 
 type Command interface {
-  Replace(string) string
+  Rewrite(string) string
 }
 
 
@@ -76,7 +76,7 @@ type PrependCommand struct {
   Width int
 }
 
-func (p *PrependCommand) Replace(fpath string) (newfpath string) {
+func (p *PrependCommand) Rewrite(fpath string) (newfpath string) {
   dir, name, ext := splitFilepath(fpath)
   return filepath.Join(dir, prependZeros(name, p.Width) + ext)
 }
@@ -89,7 +89,8 @@ func prependZeros(s string, w int) string {
     return s
   }
 
-  for t := l; t != -1; t = strings.LastIndexAny(s[0:l], "0123456789") {
+  for t := r-1; t >= 0; t -= 1 {
+    if ! strings.ContainsAny(string(s[t]), "0123456789") { break }
     l = t
   }
 
@@ -112,13 +113,40 @@ type SerialCommand struct {
   Current int
 }
 
-func (s *SerialCommand) Replace(fpath string) (newfpath string) {
+func (s *SerialCommand) Rewrite(fpath string) (newfpath string) {
   dir, name, ext := splitFilepath(fpath)
   format := fmt.Sprintf("%%0%dd", s.Width)
   name    = fmt.Sprintf(format, s.Current)
   s.Current += 1
   return filepath.Join(dir, name + ext)
 }
+
+
+//// subcommand FILLIN
+
+type FillinCommand struct {
+  Padding string
+}
+
+func (f *FillinCommand) Rewrite(fpath string) (newfpath string) {
+  dir, name, ext := splitFilepath(fpath)
+  name = strings.Replace(name, " ", f.Padding, -1)
+  return filepath.Join(dir, name + ext)
+}
+
+
+//// subcommand ERASE
+
+type EraseCommand struct {
+  Target string
+}
+
+func (e *EraseCommand) Rewrite(fpath string) (newfpath string) {
+  dir, name, ext := splitFilepath(fpath)
+  name = strings.Replace(name, e.Target, "", -1)
+  return filepath.Join(dir, name + ext)
+}
+
 
 
 
