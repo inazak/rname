@@ -1,6 +1,6 @@
 # rname
 
-command line rename utility
+rename utility for windows command prompt.
 
 
 ## Usage
