@@ -6,9 +6,10 @@ import (
   "fmt"
   "os"
   "path/filepath"
+  "regexp"
 )
 
-//// filesystem utility functions
+//// filesystem utility
 
 func GetFilepathList(filter string) (list []string, err error) {
 
@@ -99,7 +100,7 @@ func prependZeros(s string, w int) string {
   }
 
   number, _ := strconv.Atoi(s[l:r+1])
-  format := fmt.Sprintf("%%0%dd", w)  // => "%0xd"
+  format := fmt.Sprintf("%%0%dd", w)  // => "%0?d"
   filled := fmt.Sprintf(format, number)
 
   return s[0:l] + filled + s[r+1:len(s)]
@@ -148,5 +149,25 @@ func (e *EraseCommand) Rewrite(fpath string) (newfpath string) {
 }
 
 
+//// subcommand REGEX
+
+type RegexCommand struct {
+  Pattern string
+  Re      *regexp.Regexp
+  Replace string
+}
+
+func (r *RegexCommand) Rewrite(fpath string) (newfpath string) {
+  dir, name, ext := splitFilepath(fpath)
+  name = r.Re.ReplaceAllString(name, r.Replace)
+  return filepath.Join(dir, name + ext)
+}
+
+
+//// regexp compile
+
+func CompileStringToRegexp(s string) (*regexp.Regexp, error) {
+  return regexp.Compile(s)
+}
 
 

@@ -10,13 +10,13 @@ import (
 var usage =`
 Usage:
 
-  rname [test] prepend [-width=4] [FILE_PATTERN]
+  rname [test] prepend [-width=5] [FILE_PATTERN]
     prepend zeros for number
-    ex) abc-1.jpg  =>  abc-0001.jpg
+    ex) abc-1.jpg  =>  abc-00001.jpg
 
-  rname [test] serial  [-width=4] [FILE_PATTERN]
+  rname [test] serial  [-width=5] [-start=1] [FILE_PATTERN]
     replace filename to serial number
-    ex) abc.jpg  =>  0001.jpg
+    ex) abc.jpg  =>  00001.jpg
 
   rname [test] fillin [-padding='_'] [FILE_PATTERN]
     fill padding in place of space
@@ -24,11 +24,12 @@ Usage:
 
   rname [test] erase -target='?' [FILE_PATTERN]
     erase string matched target
-    ex) erase -t='-' : a-b-c.jpg => abc.jpg
+    ex) erase -t="-demo" : abc-demo.jpg => abc.jpg
 
-  rname [test] substitute -pattern='?' -replace='?' [FILE_PATTERN]
-    substitute regexp-pattern to replacement text    
-    ex) substitute -p='^(.)(.)' -r='$2$1' : abc.jpg => bac.jpg
+  rname [test] regex -pattern='?' [-replace=''] [FILE_PATTERN]
+    substitute regex-pattern to replacement text    
+    when replace text is omitted, erase matched.
+    ex) regex -p="^(.)(.)" -r="$2$1" : abc.jpg => bac.jpg
 
   FILE_PATTERN is shell file name syntax like '*.jpg'.
   when FILE_PATTERN is omitted, '*' is used.
@@ -38,12 +39,14 @@ func main() {
 
   // subcommand flagset
   prepend       := flag.NewFlagSet("prepend", flag.ExitOnError)
-  prependWidth  := prepend.Int("width", 4, "width of prepending zeros")
+  prependWidth  := prepend.Int("width", 5, "width of prepending zeros")
   prependW      := prepend.Int("w",     0, "width of prepending zeros")
 
   serial        := flag.NewFlagSet("serial", flag.ExitOnError)
-  serialWidth   := serial.Int("width", 4, "width of prepending zeros")
+  serialWidth   := serial.Int("width", 5, "width of prepending zeros")
   serialW       := serial.Int("w",     0, "width of prepending zeros")
+  serialStart   := serial.Int("start", 1, "strat number")
+  serialS       := serial.Int("s",    -1, "start number")
 
   fillin        := flag.NewFlagSet("fillin", flag.ExitOnError)
   fillinPadding := fillin.String("padding", "_", "padding in place of space")
@@ -53,6 +56,11 @@ func main() {
   eraseTarget   := erase.String("target", "", "string to erase")
   eraseT        := erase.String("t",      "", "string to erase")
 
+  regex         := flag.NewFlagSet("regex", flag.ExitOnError)
+  regexPattern  := regex.String("pattern", "", "regex pattern for search")
+  regexP        := regex.String("p",       "", "regex pattern for search")
+  regexReplace  := regex.String("replace", "", "replacement text")
+  regexR        := regex.String("r",       "", "replacement text")
 
   // exit when arguments not found
   if len(os.Args) == 1 {
@@ -92,6 +100,10 @@ func main() {
   case "erase":
     erase.Parse(args[1:])
 
+  case "regex":
+    regex.Parse(args[1:])
+
+
   default:
     fmt.Printf("%q is not valid subcommand.\n%s", args[0], usage)
     os.Exit(1)
@@ -111,8 +123,9 @@ func main() {
   }
   // subcommand SERIAL
   if serial.Parsed() {
-    if *serialW != 0 { *serialWidth = *serialW }
-    comm = &rname.SerialCommand{ Width: *serialWidth, Current: 1 }
+    if *serialW != 0  { *serialWidth = *serialW }
+    if *serialS != -1 { *serialStart = *serialS }
+    comm = &rname.SerialCommand{ Width: *serialWidth, Current: *serialStart }
     if len(serial.Args()) == 1 {
       filter = serial.Args()[0]
     }
@@ -136,6 +149,26 @@ func main() {
     comm = &rname.EraseCommand{ Target: *eraseTarget }
     if len(erase.Args()) == 1 {
       filter = erase.Args()[0]
+    }
+  }
+  // subcommand REGEX
+  if regex.Parsed() {
+    if *regexP != "" { *regexPattern = *regexP }
+    if *regexR != "" { *regexReplace = *regexR }
+    // exit when regex pattern not found
+    if *regexPattern == "" {
+      fmt.Printf("%s", usage)
+      os.Exit(1)
+    }
+    re, err := rname.CompileStringToRegexp(*regexPattern)
+    // exit when compile fail
+    if err != nil {
+      fmt.Printf("Error: %v", err)
+      os.Exit(1)
+    }
+    comm = &rname.RegexCommand{ Pattern: *regexPattern, Re: re, Replace: *regexReplace }
+    if len(regex.Args()) == 1 {
+      filter = regex.Args()[0]
     }
   }
 
