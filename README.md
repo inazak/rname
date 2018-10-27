@@ -91,5 +91,6 @@ $ go get github.com/inazak/rname/cmd/rname
 
 ## Requirements
 
-golang.
+golang. only windows.
+If you use it in unix-like-shell, you must quote to interpret wildcard FILE_PATTERN.
 
