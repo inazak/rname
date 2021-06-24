@@ -7,6 +7,8 @@ import (
   "github.com/inazak/rname"
 )
 
+const version = "1.0.0"
+
 var usage =`
 Usage:
 
@@ -31,7 +33,7 @@ Usage:
     when replace text is omitted, erase matched.
     ex) regex -p="^(.)(.)" -r="$2$1" : abc.jpg => bac.jpg
 
-  FILE_PATTERN is shell file name syntax like '*.jpg'.
+  wildcard can be used for FILE_PATTERN, like '*.jpg'.
   when FILE_PATTERN is omitted, '*' is used.
 `
 
